@@ -1,0 +1,13 @@
+{
+  "name": "niyigaba_emmellien_guillaume_hospital_school",
+  "version": "1.0.0",
+  "description": "The Clinic Management System will improve clinic operations by replacing manual paper-based processes with a modern digital system that is fast, secure, and easy to manage.",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
