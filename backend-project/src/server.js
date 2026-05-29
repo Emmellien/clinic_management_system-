@@ -10,6 +10,8 @@ const appointmentRoutes = require('./routes/appointmentRoutes');
 const treatmentRoutes = require('./routes/treatmentRoutes');
 const medicalRoutes = require('./routes/medicalRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const medicineRoutes = require('./routes/medicines');
+const usersRoutes = require('./routes/usersRoutes');
 
 const app = express();
 
@@ -25,7 +27,8 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/treatments', treatmentRoutes);
 app.use('/api/medical', medicalRoutes);
 app.use('/api/payments', paymentRoutes);
-
+app.use('/api/medicines', medicineRoutes);
+app.use('/api/users', usersRoutes);
 // Global Error Catchment
 app.use((err, req, res, next) => {
     console.error(err.stack);

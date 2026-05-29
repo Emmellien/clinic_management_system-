@@ -15,7 +15,13 @@ const PrescriptionManager = () => {
   const [selectedTreatmentId, setSelectedTreatmentId] = useState('');
   const [selectedMedicineId, setSelectedMedicineId] = useState('');
   const [quantity, setQuantity] = useState('');
+
+  // Second medication line (bundle support)
+  const [selectedMedicineId2, setSelectedMedicineId2] = useState('');
+  const [quantity2, setQuantity2] = useState('');
+
   const [dosage, setDosage] = useState('');
+
 
   const getHeader = useCallback(() => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -25,9 +31,10 @@ const PrescriptionManager = () => {
   const fetchPrescriptions = useCallback(async () => {
     try {
       const res = await axios.get('http://localhost:5000/api/medical/prescribe', getHeader());
-      setPrescriptions(res.data);
+      setPrescriptions(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed loading scripts catalog index entries:', err);
+      setPrescriptions([]); // 404/500 safe-fallback protection block
     }
   }, [getHeader]);
 
@@ -35,9 +42,10 @@ const PrescriptionManager = () => {
   const fetchTreatments = useCallback(async () => {
     try {
       const res = await axios.get('http://localhost:5000/api/treatments', getHeader());
-      setTreatments(res.data);
+      setTreatments(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to load clinical encounters list:', err);
+      setTreatments([]); // 404/500 safe-fallback protection block
     }
   }, [getHeader]);
 
@@ -45,9 +53,10 @@ const PrescriptionManager = () => {
   const fetchMedicines = useCallback(async () => {
     try {
       const res = await axios.get('http://localhost:5000/api/medicines', getHeader());
-      setMedicines(res.data);
+      setMedicines(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to load hospital pharmacy inventory:', err);
+      setMedicines([]); // 404/500 safe-fallback protection block
     }
   }, [getHeader]);
 
@@ -61,13 +70,22 @@ const PrescriptionManager = () => {
   const activeMedicineDetails = medicines.find(m => m.medicine_id === parseInt(selectedMedicineId));
   const availableStockCount = activeMedicineDetails ? activeMedicineDetails.stock_quantity : 0;
 
+  const activeMedicineDetails2 = medicines.find(m => m.medicine_id === parseInt(selectedMedicineId2));
+  const availableStockCount2 = activeMedicineDetails2 ? activeMedicineDetails2.stock_quantity : 0;
+
+
   const resetForm = () => {
     setEditingId(null);
     setSelectedTreatmentId('');
     setSelectedMedicineId('');
     setQuantity('');
+
+    setSelectedMedicineId2('');
+    setQuantity2('');
+
     setDosage('');
   };
+
 
   // Submit Handler: Process script validation write parameters
   const handleSubmit = async (e) => {
@@ -75,9 +93,15 @@ const PrescriptionManager = () => {
     setMsg({ text: '', isError: false });
 
     // Client-side verification fallback check
-    if (!editingId && parseInt(quantity) > availableStockCount) {
-      setMsg({ text: `Cannot issue prescription. The requested amount exceeds available stock (${availableStockCount} items remaining).`, isError: true });
-      return;
+    if (!editingId) {
+      if (parseInt(quantity) > availableStockCount) {
+        setMsg({ text: `Cannot issue prescription. Medicine 1 requested amount exceeds available stock (${availableStockCount} items remaining).`, isError: true });
+        return;
+      }
+      if (parseInt(quantity2) > availableStockCount2) {
+        setMsg({ text: `Cannot issue prescription. Medicine 2 requested amount exceeds available stock (${availableStockCount2} items remaining).`, isError: true });
+        return;
+      }
     }
 
     const payload = {
@@ -85,19 +109,24 @@ const PrescriptionManager = () => {
       dosage: dosage
     };
 
+
     try {
       if (editingId) {
         const res = await axios.put(`http://localhost:5000/api/medical/prescribe/${editingId}`, payload, getHeader());
         setMsg({ text: res.data.message, isError: false });
       } else {
-        const createPayload = { 
-          ...payload, 
-          treatment_id: parseInt(selectedTreatmentId), 
-          medicine_id: parseInt(selectedMedicineId) 
+        const createPayload = {
+          treatment_id: parseInt(selectedTreatmentId),
+          medicine_id_1: parseInt(selectedMedicineId),
+          quantity_1: parseInt(quantity),
+          medicine_id_2: parseInt(selectedMedicineId2),
+          quantity_2: parseInt(quantity2),
+          dosage: dosage
         };
-        const res = await axios.post('http://localhost:5000/api/medical/prescribe', createPayload, getHeader());
+        const res = await axios.post('http://localhost:5000/api/medical/prescribe-bundle', createPayload, getHeader());
         setMsg({ text: res.data.message, isError: false });
       }
+
       resetForm();
       fetchPrescriptions();
       fetchMedicines(); // Refresh stock metrics totals
@@ -111,8 +140,14 @@ const PrescriptionManager = () => {
     setSelectedTreatmentId(script.treatment_id);
     setSelectedMedicineId(script.medicine_id);
     setQuantity(script.quantity);
+
+    // bundle edit is not supported; keep second fields empty
+    setSelectedMedicineId2('');
+    setQuantity2('');
+
     setDosage(script.dosage);
   };
+
 
   const handleDelete = async (id) => {
     if (!window.confirm('Void out this prescription? This action will reverse allocated medication counts back into stock inventory balances.')) return;

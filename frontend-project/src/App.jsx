@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import Home from './components/Home';
+
 
 // Secure Route Guard
 const ProtectedRoute = ({ children }) => {
@@ -12,9 +14,14 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <Router>
-      <div style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#f4f6f9', minHeight: '100vh' }}>
+      {/* Cleaned layout wrapper utilizing standard, highly readable styling keywords */}
+      <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
         <Routes>
-          <Route path="/" element={<Login />} />
+          {/* Public Authentication Screens */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          
+          {/* Main Application Workstation (Protected Access) */}
           <Route 
             path="/dashboard" 
             element={

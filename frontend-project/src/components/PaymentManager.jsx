@@ -6,11 +6,12 @@ const PaymentManager = () => {
 
   // State Stores
   const [ledgerLogs, setLedgerLogs] = useState([]);
+  const [patients, setPatients] = useState([]); // Dynamic storage for patient foreign key reference array
   const [msg, setMsg] = useState({ text: '', isError: false });
 
   // Invoice Fields Management
   const [editingId, setEditingId] = useState(null);
-  const [patId, setPatId] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState(''); // Modified to store dropdown selection
   const [amount, setAmount] = useState('');
   const [payMethod, setPayMethod] = useState('Cash');
 
@@ -28,13 +29,24 @@ const PaymentManager = () => {
     }
   }, [getHeader]);
 
+  // Fetch dynamic patients list to populate the foreign key dropdown configuration
+  const fetchPatients = useCallback(async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/patients', getHeader());
+      setPatients(res.data);
+    } catch (err) {
+      console.error('Failed loading patient records for selector element:', err);
+    }
+  }, [getHeader]);
+
   useEffect(() => {
     fetchLedger();
-  }, [fetchLedger]);
+    fetchPatients();
+  }, [fetchLedger, fetchPatients]);
 
   const resetForm = () => {
     setEditingId(null);
-    setPatId('');
+    setSelectedPatientId('');
     setAmount('');
     setPayMethod('Cash');
   };
@@ -56,7 +68,7 @@ const PaymentManager = () => {
         setMsg({ text: `✨ ${res.data.message}`, isError: false });
       } else {
         // Run POST Create new ledger receipt item
-        const res = await axios.post('http://localhost:5000/api/payments', { ...payload, patient_id: parseInt(patId) }, getHeader());
+        const res = await axios.post('http://localhost:5000/api/payments', { ...payload, patient_id: parseInt(selectedPatientId) }, getHeader());
         setMsg({ text: `🎉 ${res.data.message}`, isError: false });
       }
       resetForm();
@@ -69,7 +81,7 @@ const PaymentManager = () => {
   // Set selected item context targets into the modify input window fields
   const startEdit = (item) => {
     setEditingId(item.payment_id);
-    setPatId(item.patient_id);
+    setSelectedPatientId(item.patient_id);
     setAmount(item.amount);
     setPayMethod(item.payment_method);
   };
@@ -119,9 +131,24 @@ const PaymentManager = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3.5">
+              
+              {/* REMOVED MANUAL INPUT BOX — IMPLEMENTED CLEAN DROP-DOWN SELECTION UX */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Target Patient Database ID</label>
-                <input type="number" className="w-full border rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 text-slate-500 font-mono" value={patId} onChange={e => setPatId(e.target.value)} required disabled={!!editingId} />
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Target Patient Account</label>
+                <select
+                  className="w-full border rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-slate-800 disabled:bg-slate-50 font-medium"
+                  value={selectedPatientId}
+                  onChange={e => setSelectedPatientId(e.target.value)}
+                  required
+                  disabled={!!editingId}
+                >
+                  <option value="">-- Select Patient Profile --</option>
+                  {patients.map(p => (
+                    <option key={p.patient_id} value={p.patient_id}>
+                      {p.full_name} (ID: #{p.patient_id}) {p.phone ? `· ${p.phone}` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -131,7 +158,7 @@ const PaymentManager = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Remittance Payment Method Channel (Enum)</label>
-                <select className="w-full border rounded-xl p-2.5 text-sm focus:outline-none bg-white" value={payMethod} onChange={e => setPayMethod(e.target.value)}>
+                <select className="w-full border rounded-xl p-2.5 text-sm focus:outline-none bg-white text-slate-800 font-medium focus:ring-2 focus:ring-blue-500" value={payMethod} onChange={e => setPayMethod(e.target.value)}>
                   <option value="Cash">Cash</option>
                   <option value="Mobile Money">Mobile Money</option>
                   <option value="Card">Card</option>

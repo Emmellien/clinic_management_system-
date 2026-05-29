@@ -98,4 +98,83 @@ router.delete('/prescribe/:id', authenticateToken, authorizeRoles('Admin'), asyn
     }
 });
 
+// 5. CREATE BUNDLE: Two medication items for the same treatment (Doctors & Nurses Only)
+// Creates TWO prescription rows and deducts stock for both medicines in a single DB transaction.
+router.post('/prescribe-bundle', authenticateToken, authorizeRoles('Doctor', 'Nurse'), async (req, res) => {
+    const {
+        treatment_id,
+        medicine_id_1,
+        quantity_1,
+        medicine_id_2,
+        quantity_2,
+        dosage
+    } = req.body;
+
+    try {
+        // Basic presence validation
+        if (!treatment_id) return res.status(400).json({ message: 'treatment_id is required.' });
+        if (!medicine_id_1 || !medicine_id_2) {
+            return res.status(400).json({ message: 'medicine_id_1 and medicine_id_2 are required.' });
+        }
+        if (!quantity_1 || !quantity_2) {
+            return res.status(400).json({ message: 'quantity_1 and quantity_2 are required.' });
+        }
+
+        // Transaction safety (MySQL)
+        await db.execute('START TRANSACTION');
+
+        // Fetch stock for both medicines
+        const [medRows] = await db.execute(
+            'SELECT medicine_id, stock_quantity FROM medicines WHERE medicine_id IN (?, ?)',
+            [medicine_id_1, medicine_id_2]
+        );
+
+        const stockMap = new Map(medRows.map(r => [r.medicine_id, r.stock_quantity]));
+
+        if (!stockMap.has(medicine_id_1)) {
+            await db.execute('ROLLBACK');
+            return res.status(404).json({ message: 'Medicine item 1 not found in inventory.' });
+        }
+        if (!stockMap.has(medicine_id_2)) {
+            await db.execute('ROLLBACK');
+            return res.status(404).json({ message: 'Medicine item 2 not found in inventory.' });
+        }
+
+        if (stockMap.get(medicine_id_1) < quantity_1) {
+            await db.execute('ROLLBACK');
+            return res.status(400).json({ message: `Insufficient stock for medicine 1. Only ${stockMap.get(medicine_id_1)} units remaining.` });
+        }
+        if (stockMap.get(medicine_id_2) < quantity_2) {
+            await db.execute('ROLLBACK');
+            return res.status(400).json({ message: `Insufficient stock for medicine 2. Only ${stockMap.get(medicine_id_2)} units remaining.` });
+        }
+
+        // Insert both prescription rows
+        await db.execute(
+            'INSERT INTO prescriptions (treatment_id, medicine_id, quantity, dosage) VALUES (?, ?, ?, ?)',
+            [treatment_id, medicine_id_1, quantity_1, dosage]
+        );
+        await db.execute(
+            'INSERT INTO prescriptions (treatment_id, medicine_id, quantity, dosage) VALUES (?, ?, ?, ?)',
+            [treatment_id, medicine_id_2, quantity_2, dosage]
+        );
+
+        // Deduct both medicines
+        await db.execute(
+            'UPDATE medicines SET stock_quantity = stock_quantity - ? WHERE medicine_id = ?',
+            [quantity_1, medicine_id_1]
+        );
+        await db.execute(
+            'UPDATE medicines SET stock_quantity = stock_quantity - ? WHERE medicine_id = ?',
+            [quantity_2, medicine_id_2]
+        );
+
+        await db.execute('COMMIT');
+        res.status(201).json({ message: 'Bundle prescription recorded successfully (2 medicines).' });
+    } catch (err) {
+        try { await db.execute('ROLLBACK'); } catch (_) {}
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
