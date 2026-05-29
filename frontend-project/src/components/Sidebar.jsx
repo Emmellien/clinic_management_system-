@@ -33,8 +33,8 @@ function Sidebar({ activeTab, setActiveTab, currentRole, onLogout, onCloseMobile
         🩺 Doctor's Checkups & Diagnoses
       </button>
 
-      {/* 4. PRESCRIPTIONS */}
-      <button type="button" onClick={() => setActiveTab('prescriptions')} className={itemClass('prescriptions')}>
+      {/* 4. PHARMACY / MEDICINES */}
+      <button type="button" onClick={() => setActiveTab('medicines')} className={itemClass('medicines')}>
         💊 Pharmacy & Medicines
       </button>
 
@@ -42,6 +42,12 @@ function Sidebar({ activeTab, setActiveTab, currentRole, onLogout, onCloseMobile
       <button type="button" onClick={() => setActiveTab('payments')} className={itemClass('payments')}>
         💰 Bills & Invoices
       </button>
+
+      {/* 6. REPORTS */}
+      <button type="button" onClick={() => setActiveTab('reports')} className={itemClass('reports')}>
+        📊 System Reports
+      </button>
+
 
       {/* ADMIN CONTROL PANEL */}
       {showStaff && (

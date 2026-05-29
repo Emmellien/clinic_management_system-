@@ -10,6 +10,8 @@ import PrescriptionManager from './PrescriptionManager';
 import AppointmentManager from './AppointmentManager'; // New Import
 import MedicineManager from './MedicineManager';         // New Import
 import Layout from './Layout';
+import Reports from './Reports';
+
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -70,10 +72,13 @@ const Dashboard = () => {
         return <TreatmentManager />;
       case 'medicines':
         return <MedicineManager />;
+      case 'reports':
+        return <Reports />;
       case 'prescriptions':
         return <PrescriptionManager />;
       case 'payments':
         return <PaymentManager />;
+
       default:
         return <PatientManager />;
     }

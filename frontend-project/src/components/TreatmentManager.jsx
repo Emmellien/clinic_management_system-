@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { getRoleFromToken } from '../utils/auth';
 
 const TreatmentManager = () => {
-  const role = localStorage.getItem('role') || 'Guest';
+  const roleFromToken = getRoleFromToken();
+  const role = roleFromToken || localStorage.getItem('role') || 'Guest';
 
   // State Lists
   const [treatments, setTreatments] = useState([]);
@@ -16,9 +18,12 @@ const TreatmentManager = () => {
   const [diagnosis, setDiagnosis] = useState('');
   const [notes, setNotes] = useState('');
 
-  const getHeader = useCallback(() => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-  }), []);
+  const getHeader = useCallback(
+    () => ({
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    }),
+    []
+  );
 
   // Fetch all saved checkups
   const fetchTreatments = useCallback(async () => {
@@ -72,36 +77,38 @@ const TreatmentManager = () => {
     try {
       await axios.post('http://localhost:5000/api/treatments', payload, getHeader());
       setMsg({ text: '🎉 Checkup results saved successfully!', isError: false });
-      
+
       // Clear input boxes
       setSelectedPatientId('');
       setSelectedDoctorId('');
       setDiagnosis('');
       setNotes('');
-      
+
       // Refresh database table view
       fetchTreatments();
     } catch (err) {
-      setMsg({ 
-        text: err.response?.data?.message || 'Failed to save checkup data.', 
-        isError: true 
+      setMsg({
+        text: err.response?.data?.message || 'Failed to save checkup data (check your account role).',
+        isError: true
       });
     }
   };
 
   return (
     <div className="space-y-6">
-      
-      {/* Alert Ribbon Banner */}
       {msg.text && (
-        <div className={`p-4 rounded-xl border text-sm font-semibold shadow-sm ${msg.isError ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+        <div
+          className={`p-4 rounded-xl border text-sm font-semibold shadow-sm ${
+            msg.isError
+              ? 'bg-red-50 border-red-200 text-red-800'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}
+        >
           {msg.text}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        
-        {/* LEFT COLUMN: ENTER MEDICAL RESULTS (Only Doctors and Nurses) */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <h3 className="text-base font-bold text-slate-800 border-b pb-2">🩺 Log Doctor's Checkup</h3>
 
@@ -111,78 +118,81 @@ const TreatmentManager = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              
-              {/* SELECT PATIENT */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Patient Name</label>
-                <select 
+                <select
                   className="w-full border rounded-xl p-2.5 text-sm text-slate-900 bg-white"
-                  value={selectedPatientId} 
-                  onChange={e => setSelectedPatientId(e.target.value)} 
+                  value={selectedPatientId}
+                  onChange={(e) => setSelectedPatientId(e.target.value)}
                   required
                 >
                   <option value="">-- Select Patient Profile --</option>
-                  {patients.map(p => (
-                    <option key={p.patient_id} value={p.patient_id}>{p.full_name} (ID: #{p.patient_id})</option>
+                  {patients.map((p) => (
+                    <option key={p.patient_id} value={p.patient_id}>
+                      {p.full_name} (ID: #{p.patient_id})
+                    </option>
                   ))}
                 </select>
               </div>
 
-              {/* SELECT ATTENDING DOCTOR */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Attending Doctor</label>
-                <select 
+                <select
                   className="w-full border rounded-xl p-2.5 text-sm text-slate-900 bg-white"
-                  value={selectedDoctorId} 
-                  onChange={e => setSelectedDoctorId(e.target.value)} 
+                  value={selectedDoctorId}
+                  onChange={(e) => setSelectedDoctorId(e.target.value)}
                   required
                 >
                   <option value="">-- Select Doctor --</option>
-                  {doctors.map(d => (
-                    <option key={d.user_id} value={d.user_id}>Dr. {d.full_name}</option>
+                  {doctors.map((d) => (
+                    <option key={d.user_id} value={d.user_id}>
+                      Dr. {d.full_name}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              {/* DIAGNOSIS TEXT */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Illness / Diagnosis</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="e.g. Malaria, Flu, Hypertension"
-                  className="w-full border rounded-xl p-2.5 text-sm text-slate-900" 
-                  value={diagnosis} 
-                  onChange={e => setDiagnosis(e.target.value)} 
-                  required 
+                  className="w-full border rounded-xl p-2.5 text-sm text-slate-900"
+                  value={diagnosis}
+                  onChange={(e) => setDiagnosis(e.target.value)}
+                  required
                 />
               </div>
 
-              {/* NOTES EXTRA FIELDS */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Clinical Notes & Findings</label>
-                <textarea 
+                <textarea
                   rows="3"
                   placeholder="Type symptoms, temperature readings, or advice here..."
-                  className="w-full border rounded-xl p-2.5 text-sm text-slate-900 focus:outline-none" 
-                  value={notes} 
-                  onChange={e => setNotes(e.target.value)} 
+                  className="w-full border rounded-xl p-2.5 text-sm text-slate-900 focus:outline-none"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
 
-              <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md shadow-blue-100 cursor-pointer">
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md shadow-blue-100 cursor-pointer"
+              >
                 Save Checkup Record
               </button>
             </form>
           )}
         </div>
 
-        {/* RIGHT COLUMNS: HISTORY REGISTRY HISTORY TABLE */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <h3 className="text-base font-bold text-slate-800 border-b pb-3">History Database Logs</h3>
 
           <div className="overflow-x-auto">
             {treatments.length === 0 ? (
-              <p className="text-center py-12 text-sm text-slate-400 font-medium">No medical diagnostic charts found inside database history logs.</p>
+              <p className="text-center py-12 text-sm text-slate-400 font-medium">
+                No medical diagnostic charts found inside database history logs.
+              </p>
             ) : (
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
@@ -204,8 +214,11 @@ const TreatmentManager = () => {
                           {t.diagnosis}
                         </span>
                       </td>
-                      <td className="p-3 max-w-[200px] truncate text-slate-500 italic" title={t.notes}>
-                        {t.notes || "No notes logged."}
+                      <td
+                        className="p-3 max-w-[200px] truncate text-slate-500 italic"
+                        title={t.notes}
+                      >
+                        {t.notes || 'No notes logged.'}
                       </td>
                       <td className="p-3 text-slate-400 font-mono">
                         {new Date(t.treatment_date).toLocaleDateString()}
@@ -217,10 +230,10 @@ const TreatmentManager = () => {
             )}
           </div>
         </div>
-
       </div>
     </div>
   );
 };
 
 export default TreatmentManager;
+
